@@ -3,6 +3,11 @@
     public delegate void ConnectionEventHandler();
     public delegate void ReceivedEventHandler(byte[] message);
 
+    public enum Protocol
+    {
+        Tcp
+    }
+
     public interface IClient
     {
         event ConnectionEventHandler Open;
