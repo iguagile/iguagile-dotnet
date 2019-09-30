@@ -30,7 +30,7 @@ namespace Iguagile
         Server
     }
 
-    class IguagileClient
+    public class IguagileClient
     {
         private IClient _client;
 
