@@ -6,7 +6,7 @@
     <RootNamespace>Iguagile</RootNamespace>
     <AssemblyName>Iguagile</AssemblyName>
   </PropertyGroup>
-
+   
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="1.7.3.7" />
   </ItemGroup>
