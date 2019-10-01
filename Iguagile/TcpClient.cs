@@ -13,35 +13,40 @@ namespace Iguagile
         public event ConnectionEventHandler Close;
         public event ReceivedEventHandler Received;
 
-        public void Connect(string address, int port)
+        public async Task ConnectAsync(string address, int port)
         {
-            _client = new System.Net.Sockets.TcpClient(address, port);
-            Open?.Invoke();
-            _stream = _client.GetStream();
-            var messageSize = new byte[2];
-            Task.Run(() =>
+            using (_client = new System.Net.Sockets.TcpClient(address, port))
+            using (_stream = _client.GetStream())
             {
-                while (_client.Connected)
+                Open?.Invoke();
+                await Task.Run(() =>
                 {
-                    _stream.Read(messageSize, 0, 2);
-                    var size = BitConverter.ToUInt16(messageSize, 0);
-                    var readSum = 0;
-                    var buf = new byte[size];
-                    var message = new byte[0];
-                    while (readSum < size)
+                    var messageSize = new byte[2];
+                    try
                     {
-                        var readSize = _stream.Read(buf, 0, size - readSum);
-                        message = message.Concat(buf.Take(readSize)).ToArray();
-                        readSum += readSize;
+                        while (_client.Connected)
+                        {
+                            _stream.Read(messageSize, 0, 2);
+                            var size = BitConverter.ToUInt16(messageSize, 0);
+                            var readSum = 0;
+                            var buf = new byte[size];
+                            var message = new byte[0];
+                            while (readSum < size)
+                            {
+                                var readSize = _stream.Read(buf, 0, size - readSum);
+                                message = message.Concat(buf.Take(readSize)).ToArray();
+                                readSum += readSize;
+                            }
+
+                            Received?.Invoke(message);
+                        }
                     }
-
-                    Received?.Invoke(message);
-                }
-
-                _client.Dispose();
-                _stream.Dispose();
-                Close?.Invoke();
-            });
+                    finally
+                    {
+                        Close?.Invoke();
+                    }
+                });
+            }
         }
 
         public void Disconnect()

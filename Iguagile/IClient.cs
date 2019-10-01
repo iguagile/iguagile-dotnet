@@ -1,4 +1,6 @@
-﻿namespace Iguagile
+﻿using System.Threading.Tasks;
+
+namespace Iguagile
 {
     public delegate void ConnectionEventHandler();
     public delegate void ReceivedEventHandler(byte[] message);
@@ -15,7 +17,7 @@
         event ReceivedEventHandler Received;
 
         bool IsConnect();
-        void Connect(string address, int port);
+        Task ConnectAsync(string address, int port);
         void Disconnect();
         void Send(byte[] data);
     }

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Iguagile
 {
@@ -43,7 +44,7 @@ namespace Iguagile
         public ConnectionEventHandler Open;
         public ConnectionEventHandler Close;
 
-        public void Connect(string address, int port, Protocol protocol)
+        public async Task ConnectAsync(string address, int port, Protocol protocol)
         {
             switch (protocol)
             {
@@ -57,7 +58,7 @@ namespace Iguagile
             _client.Open += Open;
             _client.Close += Close;
             _client.Received += ClientReceived;
-            _client.Connect(address, port);
+            await _client.ConnectAsync(address, port);
         }
 
         public void AddRpc(string methodName, object receiver)
