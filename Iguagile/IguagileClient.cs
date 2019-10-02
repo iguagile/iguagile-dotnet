@@ -42,6 +42,7 @@ namespace Iguagile
         
         public ConnectionEventHandler Open;
         public ConnectionEventHandler Close;
+        public ExceptionEventHandler OnError;
 
         public void Connect(string address, int port, Protocol protocol)
         {
@@ -56,6 +57,7 @@ namespace Iguagile
 
             _client.Open += Open;
             _client.Close += Close;
+            _client.OnError += OnError;
             _client.Received += ClientReceived;
             _client.Connect(address, port);
         }
@@ -114,7 +116,7 @@ namespace Iguagile
 
         private void ClientReceived(byte[] message)
         {
-            var id = BitConverter.ToInt16(message, 0) << 16;
+            var id = BitConverter.ToInt16(message, 0);
             var messageType = (MessageType)message[2];
             switch (messageType)
             {

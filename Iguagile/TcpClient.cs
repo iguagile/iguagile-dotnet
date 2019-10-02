@@ -12,30 +12,40 @@ namespace Iguagile
         public event ConnectionEventHandler Open;
         public event ConnectionEventHandler Close;
         public event ReceivedEventHandler Received;
+        public event ExceptionEventHandler OnError;
+
+        public bool IsConnected => _client?.Connected ?? false;
 
         public void Connect(string address, int port)
         {
             _client = new System.Net.Sockets.TcpClient(address, port);
-            Open?.Invoke();
             _stream = _client.GetStream();
+            Open?.Invoke();
             var messageSize = new byte[2];
             Task.Run(() =>
             {
-                while (_client.Connected)
+                try
                 {
-                    _stream.Read(messageSize, 0, 2);
-                    var size = BitConverter.ToUInt16(messageSize, 0);
-                    var readSum = 0;
-                    var buf = new byte[size];
-                    var message = new byte[0];
-                    while (readSum < size)
+                    while (IsConnected)
                     {
-                        var readSize = _stream.Read(buf, 0, size - readSum);
-                        message = message.Concat(buf.Take(readSize)).ToArray();
-                        readSum += readSize;
-                    }
+                        _stream.Read(messageSize, 0, 2);
+                        var size = BitConverter.ToUInt16(messageSize, 0);
+                        var readSum = 0;
+                        var buf = new byte[size];
+                        var message = new byte[0];
+                        while (readSum < size)
+                        {
+                            var readSize = _stream.Read(buf, 0, size - readSum);
+                            message = message.Concat(buf.Take(readSize)).ToArray();
+                            readSum += readSize;
+                        }
 
-                    Received?.Invoke(message);
+                        Received?.Invoke(message);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    OnError?.Invoke(exception);
                 }
 
                 _client.Dispose();
@@ -46,7 +56,7 @@ namespace Iguagile
 
         public void Disconnect()
         {
-            if (IsConnect())
+            if (IsConnected)
             {
                 _client.Close();
                 _client.Dispose();
@@ -54,14 +64,9 @@ namespace Iguagile
             }
         }
 
-        public bool IsConnect()
-        {
-            return _client?.Connected ?? false;
-        }
-
         public void Send(byte[] data)
         {
-            if (IsConnect() && (_stream?.CanWrite ?? false))
+            if (IsConnected && (_stream?.CanWrite ?? false))
             {
                 var size = data.Length;
                 var message = BitConverter.GetBytes((ushort)size);
