@@ -40,9 +40,9 @@ namespace Iguagile
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
         
-        public ConnectionEventHandler Open;
-        public ConnectionEventHandler Close;
-        public ExceptionEventHandler OnError;
+        public Action Open;
+        public Action Close;
+        public Action<Exception> OnError;
 
         public void Connect(string address, int port, Protocol protocol)
         {

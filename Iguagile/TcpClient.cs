@@ -9,10 +9,10 @@ namespace Iguagile
         private System.Net.Sockets.TcpClient _client;
         private System.Net.Sockets.NetworkStream _stream;
 
-        public event ConnectionEventHandler Open;
-        public event ConnectionEventHandler Close;
-        public event ReceivedEventHandler Received;
-        public event ExceptionEventHandler OnError;
+        public event Action Open;
+        public event Action Close;
+        public event Action<byte[]> Received;
+        public event Action<Exception> OnError;
 
         public bool IsConnected => _client?.Connected ?? false;
 

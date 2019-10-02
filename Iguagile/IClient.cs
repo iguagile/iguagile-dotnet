@@ -2,10 +2,6 @@
 
 namespace Iguagile
 {
-    public delegate void ConnectionEventHandler();
-    public delegate void ReceivedEventHandler(byte[] message);
-    public delegate void ExceptionEventHandler(Exception exception);
-
     public enum Protocol
     {
         Tcp
@@ -13,10 +9,10 @@ namespace Iguagile
 
     public interface IClient
     {
-        event ConnectionEventHandler Open;
-        event ConnectionEventHandler Close;
-        event ReceivedEventHandler Received;
-        event ExceptionEventHandler OnError;
+        event Action Open;
+        event Action Close;
+        event Action<byte[]> Received;
+        event Action<Exception> OnError;
 
         bool IsConnected { get; }
 
