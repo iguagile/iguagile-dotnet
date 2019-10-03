@@ -40,8 +40,9 @@ namespace Iguagile
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
         
-        public ConnectionEventHandler Open;
-        public ConnectionEventHandler Close;
+        public Action Open;
+        public Action Close;
+        public Action<Exception> OnError;
 
         public void Connect(string address, int port, Protocol protocol)
         {
@@ -56,6 +57,7 @@ namespace Iguagile
 
             _client.Open += Open;
             _client.Close += Close;
+            _client.OnError += OnError;
             _client.Received += ClientReceived;
             _client.Connect(address, port);
         }
@@ -92,7 +94,7 @@ namespace Iguagile
 
         private byte[] Serialize(RpcTargets target, MessageType messageType, params object[] message)
         {
-            var serialized = LZ4MessagePackSerializer.Serialize(message);
+            var serialized = MessagePackSerializer.Serialize(message);
             var data = new byte[] { (byte)target, (byte)messageType };
             return data.Concat(serialized).ToArray();
         }
@@ -114,7 +116,7 @@ namespace Iguagile
 
         private void ClientReceived(byte[] message)
         {
-            var id = BitConverter.ToInt16(message, 0) << 16;
+            var id = BitConverter.ToInt16(message, 0);
             var messageType = (MessageType)message[2];
             switch (messageType)
             {
@@ -138,7 +140,7 @@ namespace Iguagile
 
         private void InvokeRpc(byte[] data)
         {
-            var objects = LZ4MessagePackSerializer.Deserialize<object[]>(data);
+            var objects = MessagePackSerializer.Deserialize<object[]>(data);
             var methodName = (string)objects[0];
             var args = objects.Skip(1).ToArray();
             if (!_rpcMethods.ContainsKey(methodName))
