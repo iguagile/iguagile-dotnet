@@ -94,7 +94,7 @@ namespace Iguagile
 
         private byte[] Serialize(RpcTargets target, MessageType messageType, params object[] message)
         {
-            var serialized = LZ4MessagePackSerializer.Serialize(message);
+            var serialized = MessagePackSerializer.Serialize(message);
             var data = new byte[] { (byte)target, (byte)messageType };
             return data.Concat(serialized).ToArray();
         }
@@ -140,7 +140,7 @@ namespace Iguagile
 
         private void InvokeRpc(byte[] data)
         {
-            var objects = LZ4MessagePackSerializer.Deserialize<object[]>(data);
+            var objects = MessagePackSerializer.Deserialize<object[]>(data);
             var methodName = (string)objects[0];
             var args = objects.Skip(1).ToArray();
             if (!_rpcMethods.ContainsKey(methodName))
