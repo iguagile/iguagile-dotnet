@@ -48,8 +48,10 @@ namespace Iguagile
                     OnError?.Invoke(exception);
                 }
 
-                _client.Dispose();
-                _stream.Dispose();
+                _stream?.Close();
+                _client?.Close();
+                _stream = null;
+                _client = null;
                 Close?.Invoke();
             });
         }
@@ -58,8 +60,9 @@ namespace Iguagile
         {
             if (IsConnected)
             {
+                _stream.Close();
                 _client.Close();
-                _client.Dispose();
+                _stream = null;
                 _client = null;
             }
         }
