@@ -39,6 +39,7 @@ namespace Iguagile
 
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
+        public bool IsConnected => _client?.IsConnected ?? false;
         
         public Action Open;
         public Action Close;
@@ -60,6 +61,15 @@ namespace Iguagile
             _client.OnError += OnError;
             _client.Received += ClientReceived;
             _client.Connect(address, port);
+        }
+
+        public void Disconnect()
+        {
+            if (IsConnected)
+            {
+                _client.Disconnect();
+                _client = null;
+            }
         }
 
         public void AddRpc(string methodName, object receiver)
