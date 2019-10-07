@@ -10,9 +10,9 @@ namespace Iguagile
 
     public interface IClient : IDisposable
     {
-        event Action Open;
-        event Action Close;
-        event Action<byte[]> Received;
+        event Action OnConnected;
+        event Action OnClosed;
+        event Action<byte[]> OnReceived;
         event Action<Exception> OnError;
 
         bool IsConnected { get; }

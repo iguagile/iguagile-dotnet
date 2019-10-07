@@ -16,9 +16,9 @@ namespace IguagileTests
         {
             using (var client = new IguagileClient())
             {
-                client.Open += () => client.Disconnect();
+                client.OnConnected += () => client.Disconnect();
                 var pool = new Semaphore(0, 1);
-                client.Close += () => pool.Release(1);
+                client.OnClosed += () => pool.Release(1);
                 client.OnError += e => Assert.Fail(e.Message);
                 _ = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
                 pool.WaitOne();
@@ -39,8 +39,8 @@ namespace IguagileTests
             for (var i = 0; i < ClientsNum; i++)
             {
                 var client = new IguagileClient();
-                client.Open += () => poolOpen.Release(1);
-                client.Close += () => poolClose.Release(1);
+                client.OnConnected += () => poolOpen.Release(1);
+                client.OnClosed += () => poolClose.Release(1);
                 client.OnError += e => Assert.Fail(e.Message);
                 var receiver = new RpcReceiver(client, ClientsNum - 1);
                 client.AddRpc(nameof(RpcReceiver.RpcMethod), receiver);
