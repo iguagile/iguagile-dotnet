@@ -1,8 +1,10 @@
-﻿using MessagePack;
+using MessagePack;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Iguagile
 {
@@ -39,13 +41,14 @@ namespace Iguagile
 
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
+
         public bool IsConnected => _client?.IsConnected ?? false;
         
         public Action Open;
         public Action Close;
         public Action<Exception> OnError;
 
-        public void Connect(string address, int port, Protocol protocol)
+        public async Task StartAsync(string address, int port, Protocol protocol)
         {
             switch (protocol)
             {
@@ -60,12 +63,12 @@ namespace Iguagile
             _client.Close += Close;
             _client.OnError += OnError;
             _client.Received += ClientReceived;
-            _client.Connect(address, port);
+            await _client.StartAsync(address, port);
         }
 
         public void Disconnect()
         {
-            if (IsConnected)
+            if (_client != null)
             {
                 _client.Disconnect();
                 _client = null;
@@ -74,32 +77,38 @@ namespace Iguagile
 
         public void AddRpc(string methodName, object receiver)
         {
-            _rpcMethods[methodName] = receiver;
+            lock(_rpcMethods)
+            {
+                _rpcMethods[methodName] = receiver;
+            }
         }
 
         public void RemoveRpc(object receiver)
         {
-            var removeList = new List<string>();
-            foreach (var rpcMethod in _rpcMethods)
+            lock(_rpcMethods)
             {
-                if (ReferenceEquals(rpcMethod.Value, receiver))
+                var removeList = new List<string>();
+                foreach (var rpcMethod in _rpcMethods)
                 {
-                    removeList.Add(rpcMethod.Key);
+                    if (ReferenceEquals(rpcMethod.Value, receiver))
+                    {
+                        removeList.Add(rpcMethod.Key);
+                    }
                 }
-            }
 
-            foreach (var method in removeList)
-            {
-                _rpcMethods.Remove(method);
+                foreach (var method in removeList)
+                {
+                    _rpcMethods.Remove(method);
+                }
             }
         }
 
-        public void Rpc(string methodName, RpcTargets target, params object[] args)
+        public async Task Rpc(string methodName, RpcTargets target, params object[] args)
         {
             var objects = new object[] { methodName };
             objects = objects.Concat(args).ToArray();
             var data = Serialize(target, MessageType.Rpc, objects);
-            Send(data);
+            await SendAsync(data);
         }
 
         public void Dispose()
@@ -114,7 +123,7 @@ namespace Iguagile
             return data.Concat(serialized).ToArray();
         }
 
-        private void Send(byte[] data)
+        private async Task SendAsync(byte[] data)
         {
             if (data.Length >= (1 << 16) - 16)
             {
@@ -123,7 +132,7 @@ namespace Iguagile
 
             if (data.Length != 0)
             {
-                _client.Send(data);
+                await _client.SendAsync(data);
             }
         }
 
@@ -158,12 +167,18 @@ namespace Iguagile
             var objects = MessagePackSerializer.Deserialize<object[]>(data);
             var methodName = (string)objects[0];
             var args = objects.Skip(1).ToArray();
-            if (!_rpcMethods.ContainsKey(methodName))
+
+            object behaviour;
+            lock (_rpcMethods)
             {
-                return;
+                if (!_rpcMethods.ContainsKey(methodName))
+                {
+                    return;
+                }
+
+                behaviour = _rpcMethods[methodName];
             }
 
-            var behaviour = _rpcMethods[methodName];
             var type = behaviour.GetType();
             var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
             var method = type.GetMethod(methodName, flag);
