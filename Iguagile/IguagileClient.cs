@@ -30,7 +30,7 @@ namespace Iguagile
         Server
     }
 
-    public class IguagileClient
+    public class IguagileClient : IDisposable
     {
         private IClient _client;
 
@@ -100,6 +100,11 @@ namespace Iguagile
             objects = objects.Concat(args).ToArray();
             var data = Serialize(target, MessageType.Rpc, objects);
             Send(data);
+        }
+
+        public void Dispose()
+        {
+            Disconnect();
         }
 
         private byte[] Serialize(RpcTargets target, MessageType messageType, params object[] message)

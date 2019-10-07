@@ -7,7 +7,7 @@ namespace Iguagile
         Tcp
     }
 
-    public interface IClient
+    public interface IClient : IDisposable
     {
         event Action Open;
         event Action Close;

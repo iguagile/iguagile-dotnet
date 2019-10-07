@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -47,24 +47,20 @@ namespace Iguagile
                 {
                     OnError?.Invoke(exception);
                 }
-
-                _stream?.Close();
-                _client?.Close();
-                _stream = null;
-                _client = null;
-                Close?.Invoke();
             });
+
+            Disconnect();
+            Close?.Invoke();
         }
 
         public void Disconnect()
         {
             if (IsConnected)
-            {
-                _stream.Close();
+            _stream?.Dispose();
+            _client?.Dispose();
                 _client.Close();
-                _stream = null;
-                _client = null;
-            }
+            _stream = null;
+            _client = null;
         }
 
         public void Send(byte[] data)
@@ -76,6 +72,11 @@ namespace Iguagile
                 message = message.Concat(data).ToArray();
                 _stream.Write(message, 0, message.Length);
             }
+        }
+
+        public void Dispose()
+        {
+            Disconnect();
         }
     }
 }
