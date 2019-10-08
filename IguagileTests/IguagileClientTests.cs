@@ -15,7 +15,6 @@ namespace IguagileTests
         [Timeout(2000)]
         public void Connect_Tcp_WithValidAddress()
         {
-            Thread.Sleep(10000);
             using (var client = new IguagileClient())
             {
                 client.Open += () => client.Disconnect();
