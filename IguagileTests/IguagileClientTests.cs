@@ -12,8 +12,10 @@ namespace IguagileTests
         private readonly int PortTcp = 4000;
 
         [TestMethod]
+        [Timeout(2000)]
         public void Connect_Tcp_WithValidAddress()
         {
+            Thread.Sleep(10000);
             using (var client = new IguagileClient())
             {
                 client.Open += () => client.Disconnect();
