@@ -19,7 +19,8 @@ namespace Iguagile
         MigrateHost,
         Register,
         Transform,
-        Rpc
+        Rpc,
+        Binary
     }
 
     public enum RpcTargets : byte
