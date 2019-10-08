@@ -1,6 +1,7 @@
 using Iguagile;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace IguagileTests
 {
@@ -13,20 +14,22 @@ namespace IguagileTests
         [TestMethod]
         public void Connect_Tcp_WithValidAddress()
         {
-            var client = new IguagileClient();
-            client.Open += () => client.Disconnect();
-            var pool = new Semaphore(0, 1);
-            client.Close += () => pool.Release(1);
-            client.OnError += e => Assert.Fail(e.Message);
-            client.Connect(ServerAddress, PortTcp, Protocol.Tcp);
-            pool.WaitOne();
+            using (var client = new IguagileClient())
+            {
+                client.Open += () => client.Disconnect();
+                var pool = new Semaphore(0, 1);
+                client.Close += () => pool.Release(1);
+                client.OnError += e => Assert.Fail(e.Message);
+                _ = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+                pool.WaitOne();
+            }
         }
 
         private readonly int ClientsNum = 3;
 
         [TestMethod]
         [Timeout(2000)]
-        public void Rpc_OtherClients()
+        public async Task Rpc_OtherClients()
         {
             var receivers = new RpcReceiver[ClientsNum];
             var clients = new IguagileClient[ClientsNum];
@@ -41,7 +44,7 @@ namespace IguagileTests
                 client.OnError += e => Assert.Fail(e.Message);
                 var receiver = new RpcReceiver(client, ClientsNum - 1);
                 client.AddRpc(nameof(RpcReceiver.RpcMethod), receiver);
-                client.Connect(ServerAddress, PortTcp, Protocol.Tcp);
+                _ = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
                 clients[i] = client;
                 receivers[i] = receiver;
             }
@@ -53,7 +56,7 @@ namespace IguagileTests
 
             for (var i = 0; i < ClientsNum; i++)
             {
-                clients[i].Rpc(nameof(RpcReceiver.RpcMethod), RpcTargets.OtherClients, clients[i].UserId);
+                await clients[i].Rpc(nameof(RpcReceiver.RpcMethod), RpcTargets.OtherClients, clients[i].UserId);
             }
 
             for (var i = 0; i < ClientsNum; i++)

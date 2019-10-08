@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Iguagile
 {
@@ -7,7 +8,7 @@ namespace Iguagile
         Tcp
     }
 
-    public interface IClient
+    public interface IClient : IDisposable
     {
         event Action Open;
         event Action Close;
@@ -16,8 +17,8 @@ namespace Iguagile
 
         bool IsConnected { get; }
 
-        void Connect(string address, int port);
+        Task StartAsync(string address, int port);
         void Disconnect();
-        void Send(byte[] data);
+        Task SendAsync(byte[] data);
     }
 }
