@@ -1,6 +1,7 @@
 using Iguagile;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace IguagileTests
@@ -18,6 +19,38 @@ namespace IguagileTests
             using var client = new IguagileClient();
             client.OnConnected += () => client.Disconnect();
             Exception exception = null;
+            client.OnError += e => exception = e;
+            await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+            if (exception != null)
+            {
+                Assert.Fail(exception.Message);
+            }
+        }
+
+        [TestMethod]
+        [Timeout(2000)]
+        public async Task Binary()
+        {
+            var testData = System.Text.Encoding.UTF8.GetBytes("iguagile-dotnet");
+            using var client = new IguagileClient();
+            client.OnConnected += () => _ = client.SendBinaryAsync(testData);
+            Exception exception = null;
+            client.OnBinaryReceived += (id, data) =>
+            {
+                if (id != client.UserId)
+                {
+                    exception = new Exception("id is not match");
+                }
+
+                if (!data.SequenceEqual(testData))
+                {
+                    var correctData = string.Join(", ", testData);
+                    var incorrectData = string.Join(", ", data);
+                    exception = new Exception($"data is not match \n({correctData})\n({incorrectData})");
+                }
+
+                client.Disconnect();
+            };
             client.OnError += e => exception = e;
             await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
             if (exception != null)
