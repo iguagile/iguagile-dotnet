@@ -10,10 +10,10 @@ namespace Iguagile
         private CancellationTokenSource _cts;
         private System.Net.Sockets.NetworkStream _stream;
 
-        public event Action Open;
-        public event Action Close;
-        public event Action<byte[]> Received;
-        public event Action<Exception> OnError;
+        public event Action OnConnected = delegate { };
+        public event Action OnClosed = delegate { };
+        public event Action<byte[]> OnReceived = delegate { };
+        public event Action<Exception> OnError = delegate { };
 
         public bool IsConnected { get; private set; }
 
@@ -35,13 +35,13 @@ namespace Iguagile
                         await client.ConnectAsync(address, port);
                         IsConnected = true;
                         _stream = client.GetStream();
-                        Open?.Invoke();
+                        OnConnected();
 
                         await ReceiveAsync(token);
                     }
                     catch (Exception exception)
                     {
-                        OnError?.Invoke(exception);
+                        OnError(exception);
                     }
                 }, token);
             }
@@ -50,7 +50,7 @@ namespace Iguagile
             _stream.Dispose();
             _cts = null;
             _stream = null;
-            Close?.Invoke();
+            OnClosed();
         }
 
         public void Disconnect()
@@ -96,7 +96,7 @@ namespace Iguagile
                     readSum += readSize;
                 }
 
-                Received?.Invoke(message);
+                OnReceived(message);
             }
         }
     }
