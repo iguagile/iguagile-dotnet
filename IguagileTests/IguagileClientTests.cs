@@ -16,7 +16,7 @@ namespace IguagileTests
         public async Task Connect_Tcp_WithValidAddress()
         {
             using var client = new IguagileClient();
-            client.Open += () => client.Disconnect();
+            client.OnConnected += () => client.Disconnect();
             Exception exception = null;
             client.OnError += e => exception = e;
             await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);

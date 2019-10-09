@@ -43,11 +43,11 @@ namespace Iguagile
         public bool IsHost { get; private set; }
 
         public bool IsConnected => _client?.IsConnected ?? false;
-        
-        public Action Open;
-        public Action Close;
-        public Action<Exception> OnError;
-        public Action<int, byte[]> OnBinaryReceived;
+
+        public event Action OnConnected = delegate { };
+        public event Action OnClosed = delegate { };
+        public event Action<Exception> OnError = delegate { };
+        public event Action<int, byte[]> OnBinaryReceived = delegate { };
 
         public async Task StartAsync(string address, int port, Protocol protocol)
         {
@@ -60,10 +60,10 @@ namespace Iguagile
                     throw new ArgumentException("invalid protocol");
             }
 
-            _client.Open += Open;
-            _client.Close += Close;
+            _client.OnConnected += OnConnected;
+            _client.OnClosed += OnClosed;
             _client.OnError += OnError;
-            _client.Received += ClientReceived;
+            _client.OnReceived += ClientReceived;
             await _client.StartAsync(address, port);
         }
 
@@ -146,7 +146,7 @@ namespace Iguagile
             switch (messageType)
             {
                 case MessageType.Binary:
-                    OnBinaryReceived?.Invoke(id, message);
+                    OnBinaryReceived(id, message);
                     break;
                 case MessageType.Rpc:
                     InvokeRpc(message.Skip(HeaderSize).ToArray());
