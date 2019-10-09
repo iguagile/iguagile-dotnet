@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Iguagile
@@ -48,6 +47,7 @@ namespace Iguagile
         public Action Open;
         public Action Close;
         public Action<Exception> OnError;
+        public Action<int, byte[]> OnBinaryReceived;
 
         public async Task StartAsync(string address, int port, Protocol protocol)
         {
@@ -145,6 +145,9 @@ namespace Iguagile
             var messageType = (MessageType)message[2];
             switch (messageType)
             {
+                case MessageType.Binary:
+                    OnBinaryReceived?.Invoke(id, message);
+                    break;
                 case MessageType.Rpc:
                     InvokeRpc(message.Skip(HeaderSize).ToArray());
                     break;
