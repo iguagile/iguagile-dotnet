@@ -1,6 +1,6 @@
 using Iguagile;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Threading;
+using System;
 using System.Threading.Tasks;
 
 namespace IguagileTests
@@ -13,16 +13,16 @@ namespace IguagileTests
 
         [TestMethod]
         [Timeout(2000)]
-        public void Connect_Tcp_WithValidAddress()
+        public async Task Connect_Tcp_WithValidAddress()
         {
-            using (var client = new IguagileClient())
+            using var client = new IguagileClient();
+            client.Open += () => client.Disconnect();
+            Exception exception = null;
+            client.OnError += e => exception = e;
+            await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+            if (exception != null)
             {
-                client.Open += () => client.Disconnect();
-                var pool = new Semaphore(0, 1);
-                client.Close += () => pool.Release(1);
-                client.OnError += e => Assert.Fail(e.Message);
-                _ = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
-                pool.WaitOne();
+                Assert.Fail(exception.Message);
             }
         }
 
@@ -30,39 +30,57 @@ namespace IguagileTests
 
         [TestMethod]
         [Timeout(2000)]
-        public async Task Rpc_OtherClients()
+        public void Rpc_OtherClients()
         {
+            var exceptions = new Exception[ClientsNum];
+            var idPairs = new IdPair[ClientsNum];
             var receivers = new RpcReceiver[ClientsNum];
             var clients = new IguagileClient[ClientsNum];
-            var poolOpen = new Semaphore(0, ClientsNum);
-            var poolClose = new Semaphore(0, ClientsNum);
+            var tasks = new Task[3];
 
             for (var i = 0; i < ClientsNum; i++)
             {
                 var client = new IguagileClient();
-                client.Open += () => poolOpen.Release(1);
-                client.Close += () => poolClose.Release(1);
-                client.OnError += e => Assert.Fail(e.Message);
+                var index = i;
+                client.OnError += e => exceptions[index] = e;
                 var receiver = new RpcReceiver(client, ClientsNum - 1);
+                receiver.OnIdEqual += (senderId, receiverId) => idPairs[index] = new IdPair(senderId, receiverId);
                 client.AddRpc(nameof(RpcReceiver.RpcMethod), receiver);
-                _ = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+                tasks[i] = client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
                 clients[i] = client;
                 receivers[i] = receiver;
             }
 
             for (var i = 0; i < ClientsNum; i++)
             {
-                poolOpen.WaitOne();
+                _ = clients[i].Rpc(nameof(RpcReceiver.RpcMethod), RpcTargets.OtherClients, clients[i].UserId);
             }
+
+            Task.WaitAll(tasks);
 
             for (var i = 0; i < ClientsNum; i++)
             {
-                await clients[i].Rpc(nameof(RpcReceiver.RpcMethod), RpcTargets.OtherClients, clients[i].UserId);
-            }
+                if (exceptions[i] != null)
+                {
+                    Assert.Fail(exceptions[i].Message);
+                }
 
-            for (var i = 0; i < ClientsNum; i++)
+                if (idPairs[i] != null)
+                {
+                    Assert.Fail($"id is match {idPairs[i].SenderId}, {idPairs[i].ReceiverId}");
+                }
+            }
+        }
+
+        class IdPair
+        {
+            public int SenderId { get; }
+            public int ReceiverId { get; }
+
+            public IdPair(int senderId, int receiverId)
             {
-                poolClose.WaitOne();
+                SenderId = senderId;
+                ReceiverId = receiverId;
             }
         }
 
@@ -72,6 +90,8 @@ namespace IguagileTests
             private readonly int _otherClientsNum;
             private int _count;
 
+            public event Action<int, int> OnIdEqual = delegate { };
+
             public RpcReceiver(IguagileClient client, int otherClientsNum)
             {
                 _client = client;
@@ -80,7 +100,12 @@ namespace IguagileTests
 
             public void RpcMethod(int senderId)
             {
-                Assert.AreNotEqual(senderId, _client.UserId);
+                if (senderId == _client.UserId)
+                {
+                    OnIdEqual(senderId, _client.UserId);
+                    return;
+                }
+
                 _count++;
                 if (_count == _otherClientsNum)
                 {
