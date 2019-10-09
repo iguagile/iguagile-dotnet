@@ -104,6 +104,12 @@ namespace Iguagile
             }
         }
 
+        public async Task SendBinaryAsync(byte[] data)
+        {
+            data = new byte[] {(byte) RpcTargets.AllClients, (byte) MessageType.Binary}.Concat(data).ToArray();
+            await SendAsync(data);
+        }
+
         public async Task Rpc(string methodName, RpcTargets target, params object[] args)
         {
             var objects = new object[] { methodName };
@@ -146,7 +152,7 @@ namespace Iguagile
             switch (messageType)
             {
                 case MessageType.Binary:
-                    OnBinaryReceived(id, message);
+                    OnBinaryReceived(id, message.Skip(HeaderSize).ToArray());
                     break;
                 case MessageType.Rpc:
                     InvokeRpc(message.Skip(HeaderSize).ToArray());
