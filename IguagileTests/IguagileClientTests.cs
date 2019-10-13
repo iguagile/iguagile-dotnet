@@ -33,15 +33,10 @@ namespace IguagileTests
         {
             var testData = System.Text.Encoding.UTF8.GetBytes("iguagile-dotnet");
             using var client = new IguagileClient();
-            client.OnConnected += () => _ = client.SendBinaryAsync(testData);
+            client.OnConnected += () => _ = client.SendBinaryAsync(testData, RpcTargets.OtherClients);
             Exception exception = null;
             client.OnBinaryReceived += (id, data) =>
             {
-                if (id != client.UserId)
-                {
-                    exception = new Exception("id is not match");
-                }
-
                 if (!data.SequenceEqual(testData))
                 {
                     var correctData = string.Join(", ", testData);
