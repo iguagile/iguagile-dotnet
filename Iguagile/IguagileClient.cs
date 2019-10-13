@@ -104,9 +104,9 @@ namespace Iguagile
             }
         }
 
-        public async Task SendBinaryAsync(byte[] data)
+        public async Task SendBinaryAsync(byte[] data, RpcTargets target)
         {
-            data = new byte[] {(byte) RpcTargets.AllClients, (byte) MessageType.Binary}.Concat(data).ToArray();
+            data = new byte[] {(byte) target, (byte) MessageType.Binary}.Concat(data).ToArray();
             await SendAsync(data);
         }
 
