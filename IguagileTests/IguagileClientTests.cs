@@ -33,7 +33,7 @@ namespace IguagileTests
         {
             var testData = System.Text.Encoding.UTF8.GetBytes("iguagile-dotnet");
             using var client = new IguagileClient();
-            client.OnConnected += () => _ = client.SendBinaryAsync(testData, RpcTargets.OtherClients);
+            client.OnConnected += () => _ = client.SendBinaryAsync(testData, RpcTargets.AllClients);
             Exception exception = null;
             client.OnBinaryReceived += (id, data) =>
             {
