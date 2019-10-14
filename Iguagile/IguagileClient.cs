@@ -37,7 +37,7 @@ namespace Iguagile
         private IClient _client;
 
         private Dictionary<int, User> _users = new Dictionary<int, User>();
-        private Dictionary<string, object> _rpcMethods = new Dictionary<string, object>();
+        private Dictionary<string, RpcMethod> _rpcMethods = new Dictionary<string, RpcMethod>();
 
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
@@ -78,9 +78,18 @@ namespace Iguagile
 
         public void AddRpc(string methodName, object receiver)
         {
-            lock(_rpcMethods)
+            var type = receiver.GetType();
+            var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            var method = type.GetMethod(methodName, flag);
+
+            if (method == null)
             {
-                _rpcMethods[methodName] = receiver;
+                throw new Exception($"Cannot get {methodName} method");
+            }
+
+            lock (_rpcMethods)
+            {
+                _rpcMethods[methodName] = new RpcMethod(method, receiver);
             }
         }
 
@@ -91,7 +100,7 @@ namespace Iguagile
                 var removeList = new List<string>();
                 foreach (var rpcMethod in _rpcMethods)
                 {
-                    if (ReferenceEquals(rpcMethod.Value, receiver))
+                    if (ReferenceEquals(rpcMethod.Value.Receiver, receiver))
                     {
                         removeList.Add(rpcMethod.Key);
                     }
@@ -178,7 +187,7 @@ namespace Iguagile
             var methodName = (string)objects[0];
             var args = objects.Skip(1).ToArray();
 
-            object behaviour;
+            RpcMethod rpc;
             lock (_rpcMethods)
             {
                 if (!_rpcMethods.ContainsKey(methodName))
@@ -186,13 +195,10 @@ namespace Iguagile
                     return;
                 }
 
-                behaviour = _rpcMethods[methodName];
+                rpc = _rpcMethods[methodName];
             }
 
-            var type = behaviour.GetType();
-            var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            var method = type.GetMethod(methodName, flag);
-            method?.Invoke(behaviour, args);
+            rpc.Invoke(args);
         }
 
         private void AddUser(int id)
