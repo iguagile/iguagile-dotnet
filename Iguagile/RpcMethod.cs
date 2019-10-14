@@ -6,7 +6,7 @@ namespace Iguagile
     {
         public object Receiver { get; }
 
-        private MethodInfo method;
+        private readonly MethodInfo method;
 
         public RpcMethod(MethodInfo method, object receiver)
         {
