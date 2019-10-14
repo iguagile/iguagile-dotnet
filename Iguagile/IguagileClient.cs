@@ -198,7 +198,7 @@ namespace Iguagile
                 rpc = _rpcMethods[methodName];
             }
 
-            rpc.Method.Invoke(rpc.Receiver, args);
+            rpc.Invoke(args);
         }
 
         private void AddUser(int id)

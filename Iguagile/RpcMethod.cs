@@ -7,13 +7,19 @@ namespace Iguagile
 {
     public class RpcMethod
     {
-        public MethodInfo Method { get; set; }
-        public object Receiver { get; set; }
+        public object Receiver { get; }
+
+        private MethodInfo method;
 
         public RpcMethod(MethodInfo method, object receiver)
         {
-            Method = method;
+            this.method = method;
             Receiver = receiver;
+        }
+
+        public object Invoke(params object[] args)
+        {
+            return method.Invoke(Receiver, args);
         }
     }
 }
