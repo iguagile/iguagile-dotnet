@@ -16,14 +16,16 @@ namespace IguagileTests
         [Timeout(2000)]
         public async Task Connect_Tcp_WithValidAddress()
         {
-            using var client = new IguagileClient();
-            client.OnConnected += () => client.Disconnect();
-            Exception exception = null;
-            client.OnError += e => exception = e;
-            await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
-            if (exception != null)
+            using (var client = new IguagileClient())
             {
-                Assert.Fail(exception.Message);
+                client.OnConnected += () => client.Disconnect();
+                Exception exception = null;
+                client.OnError += e => exception = e;
+                await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+                if (exception != null)
+                {
+                    Assert.Fail(exception.Message);
+                }
             }
         }
 
@@ -32,25 +34,27 @@ namespace IguagileTests
         public async Task Binary()
         {
             var testData = System.Text.Encoding.UTF8.GetBytes("iguagile-dotnet");
-            using var client = new IguagileClient();
-            client.OnConnected += () => _ = client.SendBinaryAsync(testData, RpcTargets.AllClients);
-            Exception exception = null;
-            client.OnBinaryReceived += (id, data) =>
+            using (var client = new IguagileClient())
             {
-                if (!data.SequenceEqual(testData))
+                client.OnConnected += () => _ = client.SendBinaryAsync(testData, RpcTargets.AllClients);
+                Exception exception = null;
+                client.OnBinaryReceived += (id, data) =>
                 {
-                    var correctData = string.Join(", ", testData);
-                    var incorrectData = string.Join(", ", data);
-                    exception = new Exception($"data is not match \n({correctData})\n({incorrectData})");
-                }
+                    if (!data.SequenceEqual(testData))
+                    {
+                        var correctData = string.Join(", ", testData);
+                        var incorrectData = string.Join(", ", data);
+                        exception = new Exception($"data is not match \n({correctData})\n({incorrectData})");
+                    }
 
-                client.Disconnect();
-            };
-            client.OnError += e => exception = e;
-            await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
-            if (exception != null)
-            {
-                Assert.Fail(exception.Message);
+                    client.Disconnect();
+                };
+                client.OnError += e => exception = e;
+                await client.StartAsync(ServerAddress, PortTcp, Protocol.Tcp);
+                if (exception != null)
+                {
+                    Assert.Fail(exception.Message);
+                }
             }
         }
 
