@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Iguagile
@@ -19,7 +18,8 @@ namespace Iguagile
         MigrateHost,
         Register,
         Transform,
-        Rpc
+        Rpc,
+        Binary
     }
 
     public enum RpcTargets : byte
@@ -37,16 +37,17 @@ namespace Iguagile
         private IClient _client;
 
         private Dictionary<int, User> _users = new Dictionary<int, User>();
-        private Dictionary<string, object> _rpcMethods = new Dictionary<string, object>();
+        private Dictionary<string, RpcMethod> _rpcMethods = new Dictionary<string, RpcMethod>();
 
         public int UserId { get; private set; }
         public bool IsHost { get; private set; }
 
         public bool IsConnected => _client?.IsConnected ?? false;
-        
+
         public event Action OnConnected = delegate { };
         public event Action OnClosed = delegate { };
         public event Action<Exception> OnError = delegate { };
+        public event Action<int, byte[]> OnBinaryReceived = delegate { };
 
         public async Task StartAsync(string address, int port, Protocol protocol)
         {
@@ -77,9 +78,18 @@ namespace Iguagile
 
         public void AddRpc(string methodName, object receiver)
         {
-            lock(_rpcMethods)
+            var type = receiver.GetType();
+            var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+            var method = type.GetMethod(methodName, flag);
+
+            if (method == null)
             {
-                _rpcMethods[methodName] = receiver;
+                throw new Exception($"Cannot get {methodName} method");
+            }
+
+            lock (_rpcMethods)
+            {
+                _rpcMethods[methodName] = new RpcMethod(method, receiver);
             }
         }
 
@@ -90,7 +100,7 @@ namespace Iguagile
                 var removeList = new List<string>();
                 foreach (var rpcMethod in _rpcMethods)
                 {
-                    if (ReferenceEquals(rpcMethod.Value, receiver))
+                    if (ReferenceEquals(rpcMethod.Value.Receiver, receiver))
                     {
                         removeList.Add(rpcMethod.Key);
                     }
@@ -101,6 +111,12 @@ namespace Iguagile
                     _rpcMethods.Remove(method);
                 }
             }
+        }
+
+        public async Task SendBinaryAsync(byte[] data, RpcTargets target)
+        {
+            data = new byte[] {(byte) target, (byte) MessageType.Binary}.Concat(data).ToArray();
+            await SendAsync(data);
         }
 
         public async Task Rpc(string methodName, RpcTargets target, params object[] args)
@@ -144,6 +160,9 @@ namespace Iguagile
             var messageType = (MessageType)message[2];
             switch (messageType)
             {
+                case MessageType.Binary:
+                    OnBinaryReceived(id, message.Skip(HeaderSize).ToArray());
+                    break;
                 case MessageType.Rpc:
                     InvokeRpc(message.Skip(HeaderSize).ToArray());
                     break;
@@ -168,7 +187,7 @@ namespace Iguagile
             var methodName = (string)objects[0];
             var args = objects.Skip(1).ToArray();
 
-            object behaviour;
+            RpcMethod rpc;
             lock (_rpcMethods)
             {
                 if (!_rpcMethods.ContainsKey(methodName))
@@ -176,13 +195,10 @@ namespace Iguagile
                     return;
                 }
 
-                behaviour = _rpcMethods[methodName];
+                rpc = _rpcMethods[methodName];
             }
 
-            var type = behaviour.GetType();
-            var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            var method = type.GetMethod(methodName, flag);
-            method?.Invoke(behaviour, args);
+            rpc.Invoke(args);
         }
 
         private void AddUser(int id)
