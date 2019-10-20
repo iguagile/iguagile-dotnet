@@ -33,19 +33,24 @@ namespace Iguagile.Api
             requestSerializer.WriteObject(requestStream, request);
             var requestJson = Encoding.UTF8.GetString(requestStream.ToArray());
             var requestContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
-            var response = await httpClient.PostAsync(new Uri(baseUrl + "create"), requestContent);
-            var responseStream = await response.Content.ReadAsStreamAsync();
-            var responseSerializer = new DataContractJsonSerializer(typeof(CreateRoomResponse));
-            return responseSerializer.ReadObject(responseStream) as CreateRoomResponse;
+            var uri = new Uri(baseUrl + "create");
+            using (var response = await httpClient.PostAsync(uri, requestContent))
+            {
+                var responseStream = await response.Content.ReadAsStreamAsync();
+                var responseSerializer = new DataContractJsonSerializer(typeof(CreateRoomResponse));
+                return responseSerializer.ReadObject(responseStream) as CreateRoomResponse;
+            }
         }
 
         public async Task<SearchRoomResponse[]> SearchRoomAsync(SearchRoomRequest request)
         {
             var uri = new Uri($"{baseUrl}search?name={request.ApplicationName}&version={request.Version}");
             var response = await httpClient.GetAsync(uri);
-            var responseStream = await response.Content.ReadAsStreamAsync();
-            var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
-            return responseSerializer.ReadObject(responseStream) as SearchRoomResponse[];
+            using (var responseStream = await response.Content.ReadAsStreamAsync())
+            {
+                var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
+                return responseSerializer.ReadObject(responseStream) as SearchRoomResponse[];
+            }
         }
 
         public void Dispose()
