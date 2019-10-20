@@ -39,6 +39,15 @@ namespace Iguagile.Api
             return responseSerializer.ReadObject(responseStream) as CreateRoomResponse;
         }
 
+        public async Task<SearchRoomResponse[]> SearchRoomAsync(SearchRoomRequest request)
+        {
+            var uri = new Uri($"{baseUrl}search?name={request.ApplicationName}&version={request.Version}");
+            var response = await httpClient.GetAsync(uri);
+            var responseStream = await response.Content.ReadAsStreamAsync();
+            var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
+            return responseSerializer.ReadObject(responseStream) as SearchRoomResponse[];
+        }
+
         public void Dispose()
         {
             httpClient?.Dispose();
