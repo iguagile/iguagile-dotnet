@@ -8,7 +8,7 @@ namespace Iguagile.Api
         [DataMember(Name = "success")]
         public bool Success { get; set; }
 
-        [DataMember(Name = "result")]
-        public Room[] Rooms { get; set; }
+        [DataMember(Name = "error")]
+        public string Error { get; set; }
     }
 }

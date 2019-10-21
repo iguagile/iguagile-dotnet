@@ -5,7 +5,7 @@ namespace Iguagile.Api
     [DataContract]
     public class Server
     {
-        [DataMember(Name = "host")]
+        [DataMember(Name = "server")]
         public string Host { get; set; }
 
         [DataMember(Name = "port")]

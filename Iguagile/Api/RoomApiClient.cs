@@ -41,13 +41,13 @@ namespace Iguagile.Api
             using (var response = await httpClient.PostAsync(uri, requestContent))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
-                var responseSerializer = new DataContractJsonSerializer(typeof(RoomApiResponse));
-                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomApiResponse;
-                if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms.Length == 0)
+                var responseSerializer = new DataContractJsonSerializer(typeof(RoomCreateResponse));
+                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomCreateResponse;
+                if (apiResponse == null || !apiResponse.Success || apiResponse.Room == null)
                 {
-                    throw new RoomApiException();
+                    throw new RoomApiException(apiResponse?.Error);
                 }
-                return apiResponse.Rooms[0];
+                return apiResponse.Room;
             }
         }
 
@@ -57,11 +57,11 @@ namespace Iguagile.Api
             using (var response = await httpClient.GetAsync(uri))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
-                var responseSerializer = new DataContractJsonSerializer(typeof(RoomApiResponse));
-                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomApiResponse;
+                var responseSerializer = new DataContractJsonSerializer(typeof(RoomSearchResponse));
+                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomSearchResponse;
                 if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms.Length == 0)
                 {
-                    throw new RoomApiException();
+                    throw new RoomApiException(apiResponse?.Error);
                 }
                 return apiResponse.Rooms;
             }
