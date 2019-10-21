@@ -3,9 +3,9 @@
 namespace Iguagile.Api
 {
     [DataContract]
-    public class RoomCreateResponse : RoomApiResponse
+    public class SearchRoomResponse : RoomApiResponse
     {
         [DataMember(Name = "result")]
-        public Room Room { get; set; }
+        public Room[] Rooms { get; set; }
     }
 }

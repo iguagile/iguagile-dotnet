@@ -41,8 +41,8 @@ namespace Iguagile.Api
             using (var response = await httpClient.PostAsync(uri, requestContent))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
-                var responseSerializer = new DataContractJsonSerializer(typeof(RoomCreateResponse));
-                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomCreateResponse;
+                var responseSerializer = new DataContractJsonSerializer(typeof(CreateRoomResponse));
+                var apiResponse = responseSerializer.ReadObject(responseStream) as CreateRoomResponse;
                 if (apiResponse == null || !apiResponse.Success || apiResponse.Room == null)
                 {
                     throw new RoomApiException(apiResponse?.Error);
@@ -57,8 +57,8 @@ namespace Iguagile.Api
             using (var response = await httpClient.GetAsync(uri))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
-                var responseSerializer = new DataContractJsonSerializer(typeof(RoomSearchResponse));
-                var apiResponse = responseSerializer.ReadObject(responseStream) as RoomSearchResponse;
+                var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
+                var apiResponse = responseSerializer.ReadObject(responseStream) as SearchRoomResponse;
                 if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms.Length == 0)
                 {
                     throw new RoomApiException(apiResponse?.Error);
