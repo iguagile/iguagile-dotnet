@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.Serialization.Json;
@@ -20,10 +21,6 @@ namespace Iguagile.Api
                 case "http":
                 case "https":
                     this.baseUrl = uri.AbsoluteUri;
-                    if (!this.baseUrl.EndsWith("/"))
-                    {
-                        this.baseUrl += "/";
-                    }
                     break;
                 default:
                     throw new ArgumentException($"invalid scheme: {uri.Scheme}");
@@ -37,7 +34,7 @@ namespace Iguagile.Api
             requestSerializer.WriteObject(requestStream, request);
             var requestJson = Encoding.UTF8.GetString(requestStream.ToArray());
             var requestContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
-            var uri = new Uri(baseUrl + "create");
+            var uri = new Uri(baseUrl + "/create");
             using (var response = await httpClient.PostAsync(uri, requestContent))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
@@ -47,22 +44,36 @@ namespace Iguagile.Api
                 {
                     throw new RoomApiException(apiResponse?.Error);
                 }
+
                 return apiResponse.Room;
             }
         }
 
         public async Task<Room[]> SearchRoomAsync(SearchRoomRequest request)
         {
-            var uri = new Uri($"{baseUrl}search?name={request.ApplicationName}&version={request.Version}");
+            var uriString = baseUrl + "/search?";
+            var parameters = new Dictionary<string, string>()
+            {
+                {"name", request.ApplicationName},
+                {"version", request.Version}
+            };
+
+            using (var content = new FormUrlEncodedContent(parameters))
+            {
+                uriString += await content.ReadAsStringAsync();
+            }
+
+            var uri = new Uri(uriString);
             using (var response = await httpClient.GetAsync(uri))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
                 var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
                 var apiResponse = responseSerializer.ReadObject(responseStream) as SearchRoomResponse;
-                if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms.Length == 0)
+                if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms == null)
                 {
                     throw new RoomApiException(apiResponse?.Error);
                 }
+
                 return apiResponse.Rooms;
             }
         }
