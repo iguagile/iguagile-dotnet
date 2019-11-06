@@ -34,7 +34,7 @@ namespace Iguagile.Api
             requestSerializer.WriteObject(requestStream, request);
             var requestJson = Encoding.UTF8.GetString(requestStream.ToArray());
             var requestContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
-            var uri = new Uri(baseUrl + "/create");
+            var uri = new Uri(baseUrl + "/rooms");
             using (var response = await httpClient.PostAsync(uri, requestContent))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
@@ -51,7 +51,7 @@ namespace Iguagile.Api
 
         public async Task<Room[]> SearchRoomAsync(SearchRoomRequest request)
         {
-            var uriString = baseUrl + "/search?";
+            var uriString = baseUrl + "/rooms?";
             var parameters = new Dictionary<string, string>()
             {
                 {"name", request.ApplicationName},
