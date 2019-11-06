@@ -23,14 +23,7 @@ namespace Iguagile.Api
 
         public override string ToString()
         {
-            var builder = new StringBuilder();
-            builder.Append($"RoomId={RoomId}, ");
-            builder.Append($"RequirePassword={RequirePassword}, ");
-            builder.Append($"Host={Server?.Host}, ");
-            builder.Append($"Port={Server?.Port}, ");
-            builder.Append($"MaxUser={MaxUser}, ");
-            builder.Append($"ConnectedUser={ConnectedUser}, ");
-            return builder.ToString();
+            return $"RoomId={RoomId}, RequirePassword={RequirePassword}, Host={Server?.Host}, Port={Server?.Port}, MaxUser={MaxUser}, ConnectedUser={ConnectedUser}, ";
         }
     }
 }
