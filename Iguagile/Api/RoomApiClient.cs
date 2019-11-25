@@ -45,6 +45,10 @@ namespace Iguagile.Api
                     throw new RoomApiException(apiResponse?.Error);
                 }
 
+                apiResponse.Room.ApplicationName = request.ApplicationName;
+                apiResponse.Room.Version = request.Version;
+                apiResponse.Room.Password = request.Password;
+
                 return apiResponse.Room;
             }
         }

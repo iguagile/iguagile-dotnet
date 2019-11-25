@@ -21,6 +21,15 @@ namespace Iguagile.Api
         [DataMember(Name = "connected_user")]
         public int ConnectedUser { get; set; }
 
+        [DataMember(Name = "token")]
+        public string Token { get; set; }
+
+        public string ApplicationName{ get; set; }
+
+        public string Version { get; set; }
+
+        public string Password { get; set; }
+
         public override string ToString()
         {
             return $"RoomId={RoomId}, RequirePassword={RequirePassword}, Host={Server?.Host}, Port={Server?.Port}, MaxUser={MaxUser}, ConnectedUser={ConnectedUser}, ";
