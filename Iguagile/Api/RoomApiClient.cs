@@ -73,9 +73,20 @@ namespace Iguagile.Api
                 var responseStream = await response.Content.ReadAsStreamAsync();
                 var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
                 var apiResponse = responseSerializer.ReadObject(responseStream) as SearchRoomResponse;
-                if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms == null)
+                if (apiResponse == null || !apiResponse.Success)
                 {
                     throw new RoomApiException(apiResponse?.Error);
+                }
+
+                if (apiResponse.Rooms == null)
+                {
+                    return new Room[0];
+                }
+
+                foreach (var room in apiResponse.Rooms)
+                {
+                    room.ApplicationName = request.ApplicationName;
+                    room.Version = request.Version;
                 }
 
                 return apiResponse.Rooms;
