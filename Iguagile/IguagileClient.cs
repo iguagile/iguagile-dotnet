@@ -1,3 +1,4 @@
+using Iguagile.Api;
 using MessagePack;
 using System;
 using System.Collections.Generic;
@@ -65,6 +66,24 @@ namespace Iguagile
             _client.OnError += OnError;
             _client.OnReceived += ClientReceived;
             await _client.StartAsync(address, port);
+        }
+
+        public async Task StartAsync(Room room, Protocol protocol)
+        {
+            switch (protocol)
+            {
+                case Protocol.Tcp:
+                    _client = new TcpClient();
+                    break;
+                default:
+                    throw new ArgumentException("invalid protocol");
+            }
+
+            _client.OnConnected += OnConnected;
+            _client.OnClosed += OnClosed;
+            _client.OnError += OnError;
+            _client.OnReceived += ClientReceived;
+            await _client.StartAsync(room);
         }
 
         public void Disconnect()
