@@ -1,4 +1,5 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace Iguagile.Api
 {
@@ -16,5 +17,8 @@ namespace Iguagile.Api
 
         [DataMember(Name = "max_user")]
         public int MaxUser { get; set; }
+
+        [DataMember(Name = "information")]
+        public Dictionary<string, string> Information { get; set; }
     }
 }

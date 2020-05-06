@@ -1,4 +1,5 @@
-﻿using System.Runtime.Serialization;
+﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace Iguagile.Api
@@ -23,6 +24,9 @@ namespace Iguagile.Api
 
         [DataMember(Name = "token")]
         public string Token { get; set; }
+
+        [DataMember(Name = "information")]
+        public Dictionary<string, string> Information { get; set; }
 
         public string ApplicationName{ get; set; }
 
