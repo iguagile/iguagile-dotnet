@@ -19,6 +19,7 @@ namespace Iguagile
 
         public bool IsConnected { get; private set; }
 
+        [Obsolete]
         public async Task StartAsync(string address, int port)
         {
             if(_cts != null)

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Iguagile
 {
+    [Obsolete]
     public enum MessageType : byte
     {
         NewConnection,
@@ -23,6 +24,7 @@ namespace Iguagile
         Binary
     }
 
+    [Obsolete]
     public enum RpcTargets : byte
     {
         AllClients,
@@ -48,8 +50,19 @@ namespace Iguagile
         public event Action OnConnected = delegate { };
         public event Action OnClosed = delegate { };
         public event Action<Exception> OnError = delegate { };
+        public event Action<byte[]> OnReceived = delegate { };
+
+        [Obsolete]
         public event Action<int, byte[]> OnBinaryReceived = delegate { };
 
+        public async Task StartAsync(Room room)
+        {
+            _client = new TcpClient();
+            _client.OnReceived += OnReceived;
+            await _client.StartAsync(room);
+        }
+
+        [Obsolete]
         public async Task StartAsync(string address, int port, Protocol protocol)
         {
             switch (protocol)
@@ -68,6 +81,7 @@ namespace Iguagile
             await _client.StartAsync(address, port);
         }
 
+        [Obsolete]
         public async Task StartAsync(Room room, Protocol protocol)
         {
             switch (protocol)
@@ -95,6 +109,7 @@ namespace Iguagile
             }
         }
 
+        [Obsolete]
         public void AddRpc(string methodName, object receiver)
         {
             var type = receiver.GetType();
@@ -112,6 +127,7 @@ namespace Iguagile
             }
         }
 
+        [Obsolete]
         public void RemoveRpc(object receiver)
         {
             lock(_rpcMethods)
@@ -138,6 +154,7 @@ namespace Iguagile
             await SendAsync(data);
         }
 
+        [Obsolete]
         public async Task Rpc(string methodName, RpcTargets target, params object[] args)
         {
             var objects = new object[] { methodName };
