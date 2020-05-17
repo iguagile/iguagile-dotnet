@@ -175,7 +175,7 @@ namespace Iguagile
             return data.Concat(serialized).ToArray();
         }
 
-        private async Task SendAsync(byte[] data)
+        public async Task SendAsync(byte[] data)
         {
             if (data.Length >= (1 << 16) - 16)
             {
