@@ -18,7 +18,6 @@ namespace Iguagile
 
         bool IsConnected { get; }
 
-        Task StartAsync(string address, int port);
         Task StartAsync(Room room);
         void Disconnect();
         Task SendAsync(byte[] data);

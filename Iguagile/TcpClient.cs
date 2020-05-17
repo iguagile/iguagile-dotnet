@@ -19,43 +19,6 @@ namespace Iguagile
 
         public bool IsConnected { get; private set; }
 
-        [Obsolete]
-        public async Task StartAsync(string address, int port)
-        {
-            if(_cts != null)
-            {
-                throw new InvalidOperationException("Client is already started");
-            }
-
-            using (_cts = new CancellationTokenSource())
-            using (var client = new System.Net.Sockets.TcpClient())
-            {
-                var token = _cts.Token;
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        await client.ConnectAsync(address, port);
-                        IsConnected = true;
-                        _stream = client.GetStream();
-                        OnConnected();
-
-                        await ReceiveAsync(token);
-                    }
-                    catch (Exception exception)
-                    {
-                        OnError(exception);
-                    }
-                }, token);
-            }
-
-            IsConnected = false;
-            _stream.Dispose();
-            _cts = null;
-            _stream = null;
-            OnClosed();
-        }
-
         public async Task StartAsync(Room room)
         {
             if(_cts != null)
