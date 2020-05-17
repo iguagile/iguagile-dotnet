@@ -59,6 +59,9 @@ namespace Iguagile
         {
             _client = new TcpClient();
             _client.OnReceived += OnReceived;
+            _client.OnConnected += OnConnected;
+            _client.OnClosed += OnClosed;
+            _client.OnError += OnError;
             await _client.StartAsync(room);
         }
 
