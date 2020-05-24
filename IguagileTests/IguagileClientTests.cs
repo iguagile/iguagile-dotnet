@@ -4,7 +4,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace IguagileTests
@@ -12,13 +11,13 @@ namespace IguagileTests
     [TestClass]
     public class IguagileClientTests
     {
-        private readonly string BaseUri = "http://localhost/api/v1";
-        private readonly string ApplicationName = "ApplicationName";
-        private readonly string Version = "0.0.0";
-        private readonly string Password = "******";
-        private readonly int MaxUser = 20;
-        private readonly byte[] TestData = Encoding.UTF8.GetBytes("test data");
+        private const string BaseUri = "http://localhost/api/v1";
+        private const string ApplicationName = "ApplicationName";
+        private const string Version = "0.0.0";
+        private const string Password = "******";
+        private const int MaxUser = 20;
 
+        private readonly byte[] _testData = Encoding.UTF8.GetBytes("test data");
 
         // iguaigle-engine server uses an implementation of RelayService.
         [TestMethod]
@@ -27,47 +26,43 @@ namespace IguagileTests
         {
             var room = await CreateRoom();
             Exception exception = null;
-            using (var client = new IguagileClient())
+
+            var client = new IguagileClient();
+            client.OnError += e => { exception = e; };
+            client.OnConnected += () => _ = client.SendAsync(_testData);
+            client.OnReceived += x =>
             {
-                client.OnError += e =>
+                if (!_testData.SequenceEqual(x))
                 {
-                    exception = e;
-                };
+                    var correctData = string.Join(", ", _testData);
+                    var incorrectData = string.Join(", ", x);
+                    exception = new Exception($"data is not match \n({correctData})\n({incorrectData})");
+                }
 
-                client.OnConnected += () => _ = client.SendAsync(TestData);
+                client.Dispose();
+            };
 
-                client.OnReceived += x =>
-                {
-                    if (!TestData.SequenceEqual(x))
-                    {
-                        var correctData = string.Join(", ", TestData);
-                        var incorrectData = string.Join(", ", x);
-                        exception = new Exception($"data is not match \n({correctData})\n({incorrectData})");
-                    }
-
-                    client.Disconnect();
-                };
-
-                await client.StartAsync(room);
+            await client.StartAsync(room);
+            if (exception is TaskCanceledException)
+            {
+                exception = null;
             }
 
-            Assert.IsNull(exception);
+            Assert.IsNull(exception, exception?.Message);
         }
 
         private async Task<Room> CreateRoom()
         {
-            using (var api = new RoomApiClient(BaseUri))
+            using var api = new RoomApiClient(BaseUri);
+            var req = new CreateRoomRequest
             {
-                var req = new CreateRoomRequest
-                {
-                    ApplicationName = ApplicationName,
-                    Version = Version,
-                    Password = Password,
-                    MaxUser = MaxUser,
-                };
+                ApplicationName = ApplicationName,
+                Version = Version,
+                Password = Password,
+                MaxUser = MaxUser,
+            };
 
-                return await api.CreateRoomAsync(req);
-            }
+            return await api.CreateRoomAsync(req);
         }
     }
 }

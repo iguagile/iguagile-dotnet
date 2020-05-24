@@ -7,11 +7,11 @@ namespace IguagileTests
     [TestClass]
     public class IguagileApiTest
     {
-        private readonly string BaseUri = "http://localhost/api/v1";
-        private readonly string ApplicationName = "ApplicationName";
-        private readonly string Version = "0.0.0";
-        private readonly string Password = "******";
-        private readonly int MaxUser = 20;
+        private const string BaseUri = "http://localhost/api/v1";
+        private const string ApplicationName = "ApplicationName";
+        private const string Version = "0.0.0";
+        private const string Password = "******";
+        private const int MaxUser = 20;
 
         [TestMethod]
         public async Task CreateRoom()
