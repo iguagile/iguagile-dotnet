@@ -3,7 +3,10 @@ jobs:
   build:
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.0
+      - image: redis:latest
       - image: iguagile/iguagile-engine:beta
+        environment:
+          REDIS_HOST: "localhost:6379"
     steps:
       - checkout
       - run: dotnet restore
