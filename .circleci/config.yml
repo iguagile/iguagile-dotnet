@@ -6,6 +6,7 @@ jobs:
       - image: redis:latest
       - image: iguagile/iguagile-engine:beta
         environment:
+          ROOM_HOST: "localhost:10000
           REDIS_HOST: "localhost:6379"
           GRPC_PORT: "12345"
     steps:
