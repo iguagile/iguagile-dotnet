@@ -10,8 +10,8 @@ namespace Iguagile.Api
 {
     public class RoomApiClient : IDisposable
     {
-        private readonly HttpClient httpClient = new HttpClient();
-        private readonly string baseUrl;
+        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly string _baseUrl;
 
         public RoomApiClient(string baseUrl)
         {
@@ -20,7 +20,7 @@ namespace Iguagile.Api
             {
                 case "http":
                 case "https":
-                    this.baseUrl = uri.AbsoluteUri;
+                    _baseUrl = uri.AbsoluteUri;
                     break;
                 default:
                     throw new ArgumentException($"invalid scheme: {uri.Scheme}");
@@ -34,8 +34,8 @@ namespace Iguagile.Api
             requestSerializer.WriteObject(requestStream, request);
             var requestJson = Encoding.UTF8.GetString(requestStream.ToArray());
             var requestContent = new StringContent(requestJson, Encoding.UTF8, "application/json");
-            var uri = new Uri(baseUrl + "/rooms");
-            using (var response = await httpClient.PostAsync(uri, requestContent))
+            var uri = new Uri(_baseUrl + "/rooms");
+            using (var response = await _httpClient.PostAsync(uri, requestContent))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
                 var responseSerializer = new DataContractJsonSerializer(typeof(CreateRoomResponse));
@@ -45,13 +45,17 @@ namespace Iguagile.Api
                     throw new RoomApiException(apiResponse?.Error);
                 }
 
+                apiResponse.Room.ApplicationName = request.ApplicationName;
+                apiResponse.Room.Version = request.Version;
+                apiResponse.Room.Password = request.Password;
+
                 return apiResponse.Room;
             }
         }
 
         public async Task<Room[]> SearchRoomAsync(SearchRoomRequest request)
         {
-            var uriString = baseUrl + "/rooms?";
+            var uriString = _baseUrl + "/rooms?";
             var parameters = new Dictionary<string, string>()
             {
                 {"name", request.ApplicationName},
@@ -64,14 +68,25 @@ namespace Iguagile.Api
             }
 
             var uri = new Uri(uriString);
-            using (var response = await httpClient.GetAsync(uri))
+            using (var response = await _httpClient.GetAsync(uri))
             {
                 var responseStream = await response.Content.ReadAsStreamAsync();
                 var responseSerializer = new DataContractJsonSerializer(typeof(SearchRoomResponse));
                 var apiResponse = responseSerializer.ReadObject(responseStream) as SearchRoomResponse;
-                if (apiResponse == null || !apiResponse.Success || apiResponse.Rooms == null)
+                if (apiResponse == null || !apiResponse.Success)
                 {
                     throw new RoomApiException(apiResponse?.Error);
+                }
+
+                if (apiResponse.Rooms == null)
+                {
+                    return new Room[0];
+                }
+
+                foreach (var room in apiResponse.Rooms)
+                {
+                    room.ApplicationName = request.ApplicationName;
+                    room.Version = request.Version;
                 }
 
                 return apiResponse.Rooms;
@@ -80,7 +95,7 @@ namespace Iguagile.Api
 
         public void Dispose()
         {
-            httpClient?.Dispose();
+            _httpClient?.Dispose();
         }
     }
 }

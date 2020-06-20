@@ -1,5 +1,5 @@
-﻿using System.Runtime.Serialization;
-using System.Text;
+﻿using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace Iguagile.Api
 {
@@ -20,6 +20,18 @@ namespace Iguagile.Api
 
         [DataMember(Name = "connected_user")]
         public int ConnectedUser { get; set; }
+
+        [DataMember(Name = "token")]
+        public string Token { get; set; }
+
+        [DataMember(Name = "information")]
+        public Dictionary<string, string> Information { get; set; }
+
+        public string ApplicationName{ get; set; }
+
+        public string Version { get; set; }
+
+        public string Password { get; set; }
 
         public override string ToString()
         {

@@ -7,55 +7,45 @@ namespace Iguagile
 {
     class TcpClient : IClient
     {
-        private CancellationTokenSource _cts;
+        private System.Net.Sockets.TcpClient _client;
         private System.Net.Sockets.NetworkStream _stream;
-
-        public event Action OnConnected = delegate { };
-        public event Action OnClosed = delegate { };
-        public event Action<byte[]> OnReceived = delegate { };
-        public event Action<Exception> OnError = delegate { };
 
         public bool IsConnected { get; private set; }
 
-        public async Task StartAsync(string address, int port)
+        public async Task ConnectAsync(string host, int port)
         {
-            if(_cts != null)
+            if (IsConnected)
             {
                 throw new InvalidOperationException("Client is already started");
             }
 
-            using (_cts = new CancellationTokenSource())
-            using (var client = new System.Net.Sockets.TcpClient())
-            {
-                var token = _cts.Token;
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        await client.ConnectAsync(address, port);
-                        IsConnected = true;
-                        _stream = client.GetStream();
-                        OnConnected();
-
-                        await ReceiveAsync(token);
-                    }
-                    catch (Exception exception)
-                    {
-                        OnError(exception);
-                    }
-                }, token);
-            }
-
-            IsConnected = false;
-            _stream.Dispose();
-            _cts = null;
-            _stream = null;
-            OnClosed();
+            _client = new System.Net.Sockets.TcpClient();
+            await _client.ConnectAsync(host, port);
+            IsConnected = true;
+            _stream = _client.GetStream();
         }
 
-        public void Disconnect()
+        public async Task<int> ReadAsync(byte[] buffer, CancellationToken token)
         {
-            _cts?.Cancel();
+            await _stream.ReadAsync(buffer, 0, 2, token);
+            if (token.IsCancellationRequested)
+            {
+                return 0;
+            }
+            var size = BitConverter.ToUInt16(buffer, 0);
+            var readSum = 0;
+            var buf = new byte[size];
+            while (readSum < size)
+            {
+                var readSize = await _stream.ReadAsync(buffer, readSum, size - readSum, token);
+                if (token.IsCancellationRequested)
+                {
+                    return 0;
+                }
+                readSum += readSize;
+            }
+
+            return readSum;
         }
 
         public async Task SendAsync(byte[] data)
@@ -63,7 +53,7 @@ namespace Iguagile
             if (IsConnected && (_stream?.CanWrite ?? false))
             {
                 var size = data.Length;
-                var message = BitConverter.GetBytes((ushort)size);
+                var message = BitConverter.GetBytes((ushort) size);
                 message = message.Concat(data).ToArray();
                 await _stream.WriteAsync(message, 0, message.Length);
             }
@@ -71,33 +61,9 @@ namespace Iguagile
 
         public void Dispose()
         {
-            Disconnect();
-        }
-
-        private async Task ReceiveAsync(CancellationToken token)
-        {
-            var messageSize = new byte[2];
-            while (true)
-            {
-                if (token.IsCancellationRequested) {
-                    return;
-                }
-
-                await _stream.ReadAsync(messageSize, 0, 2);
-
-                var size = BitConverter.ToUInt16(messageSize, 0);
-                var readSum = 0;
-                var buf = new byte[size];
-                var message = new byte[0];
-                while (readSum < size)
-                {
-                    var readSize = await _stream.ReadAsync(buf, 0, size - readSum);
-                    message = message.Concat(buf.Take(readSize)).ToArray();
-                    readSum += readSize;
-                }
-
-                OnReceived(message);
-            }
+            _stream.Dispose();
+            _client.Dispose();
+            IsConnected = false;
         }
     }
 }

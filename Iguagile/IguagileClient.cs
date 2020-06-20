@@ -1,145 +1,67 @@
-using MessagePack;
+using Iguagile.Api;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Iguagile
 {
-    public enum MessageType : byte
-    {
-        NewConnection,
-        ExitConnection,
-        Instantiate,
-        Destroy,
-        RequestObjectControlAuthority,
-        TransferObjectControlAuthority,
-        MigrateHost,
-        Register,
-        Transform,
-        Rpc,
-        Binary
-    }
-
-    public enum RpcTargets : byte
-    {
-        AllClients,
-        OtherClients,
-        AllClientsBuffered,
-        OtherClientsBuffered,
-        Host,
-        Server
-    }
-
     public class IguagileClient : IDisposable
     {
+        private CancellationTokenSource _cts;
         private IClient _client;
-
-        private Dictionary<int, User> _users = new Dictionary<int, User>();
-        private Dictionary<string, RpcMethod> _rpcMethods = new Dictionary<string, RpcMethod>();
-
-        public int UserId { get; private set; }
-        public bool IsHost { get; private set; }
 
         public bool IsConnected => _client?.IsConnected ?? false;
 
         public event Action OnConnected = delegate { };
         public event Action OnClosed = delegate { };
         public event Action<Exception> OnError = delegate { };
-        public event Action<int, byte[]> OnBinaryReceived = delegate { };
+        public event Action<byte[]> OnReceived = delegate { };
 
-        public async Task StartAsync(string address, int port, Protocol protocol)
+        public async Task StartAsync(Room room)
         {
-            switch (protocol)
+            if (_cts != null)
             {
-                case Protocol.Tcp:
-                    _client = new TcpClient();
-                    break;
-                default:
-                    throw new ArgumentException("invalid protocol");
+                throw new InvalidOperationException("Client is already started");
             }
 
-            _client.OnConnected += OnConnected;
-            _client.OnClosed += OnClosed;
-            _client.OnError += OnError;
-            _client.OnReceived += ClientReceived;
-            await _client.StartAsync(address, port);
-        }
-
-        public void Disconnect()
-        {
-            if (_client != null)
+            using (_client = new TcpClient())
+            using (_cts = new CancellationTokenSource())
             {
-                _client.Disconnect();
-                _client = null;
-            }
-        }
-
-        public void AddRpc(string methodName, object receiver)
-        {
-            var type = receiver.GetType();
-            var flag = BindingFlags.InvokeMethod | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            var method = type.GetMethod(methodName, flag);
-
-            if (method == null)
-            {
-                throw new Exception($"Cannot get {methodName} method");
-            }
-
-            lock (_rpcMethods)
-            {
-                _rpcMethods[methodName] = new RpcMethod(method, receiver);
-            }
-        }
-
-        public void RemoveRpc(object receiver)
-        {
-            lock(_rpcMethods)
-            {
-                var removeList = new List<string>();
-                foreach (var rpcMethod in _rpcMethods)
+                var token = _cts.Token;
+                try
                 {
-                    if (ReferenceEquals(rpcMethod.Value.Receiver, receiver))
+                    await _client.ConnectAsync(room.Server.Host, room.Server.Port);
+                    var roomId = BitConverter.GetBytes(room.RoomId);
+                    await SendAsync(roomId);
+                    var applicationName = Encoding.UTF8.GetBytes(room.ApplicationName);
+                    await SendAsync(applicationName);
+                    var version = Encoding.UTF8.GetBytes(room.Version);
+                    await SendAsync(version);
+                    var password = Encoding.UTF8.GetBytes(room.Password);
+                    await SendAsync(password);
+                    if (!string.IsNullOrEmpty(room.Token))
                     {
-                        removeList.Add(rpcMethod.Key);
+                        var roomToken = Convert.FromBase64String(room.Token);
+                        await SendAsync(roomToken);
                     }
-                }
 
-                foreach (var method in removeList)
+                    OnConnected();
+
+                    await ReceiveAsync(token);
+                }
+                catch (Exception exception)
                 {
-                    _rpcMethods.Remove(method);
+                    OnError(exception);
                 }
             }
+
+            _cts = null;
+            OnClosed();
         }
 
-        public async Task SendBinaryAsync(byte[] data, RpcTargets target)
-        {
-            data = new byte[] {(byte) target, (byte) MessageType.Binary}.Concat(data).ToArray();
-            await SendAsync(data);
-        }
-
-        public async Task Rpc(string methodName, RpcTargets target, params object[] args)
-        {
-            var objects = new object[] { methodName };
-            objects = objects.Concat(args).ToArray();
-            var data = Serialize(target, MessageType.Rpc, objects);
-            await SendAsync(data);
-        }
-
-        public void Dispose()
-        {
-            Disconnect();
-        }
-
-        private byte[] Serialize(RpcTargets target, MessageType messageType, params object[] message)
-        {
-            var serialized = MessagePackSerializer.Serialize(message);
-            var data = new byte[] { (byte)target, (byte)messageType };
-            return data.Concat(serialized).ToArray();
-        }
-
-        private async Task SendAsync(byte[] data)
+        public async Task SendAsync(byte[] data)
         {
             if (data.Length >= (1 << 16) - 16)
             {
@@ -152,73 +74,25 @@ namespace Iguagile
             }
         }
 
-        private const int HeaderSize = 3;
-
-        private void ClientReceived(byte[] message)
+        private async Task ReceiveAsync(CancellationToken token)
         {
-            var id = BitConverter.ToInt16(message, 0);
-            var messageType = (MessageType)message[2];
-            switch (messageType)
+            while (true)
             {
-                case MessageType.Binary:
-                    OnBinaryReceived(id, message.Skip(HeaderSize).ToArray());
-                    break;
-                case MessageType.Rpc:
-                    InvokeRpc(message.Skip(HeaderSize).ToArray());
-                    break;
-                case MessageType.NewConnection:
-                    AddUser(id);
-                    break;
-                case MessageType.ExitConnection:
-                    RemoveUser(id);
-                    break;
-                case MessageType.MigrateHost:
-                    MigrateHost();
-                    break;
-                case MessageType.Register:
-                    Register(id);
-                    break;
-            }
-        }
-
-        private void InvokeRpc(byte[] data)
-        {
-            var objects = MessagePackSerializer.Deserialize<object[]>(data);
-            var methodName = (string)objects[0];
-            var args = objects.Skip(1).ToArray();
-
-            RpcMethod rpc;
-            lock (_rpcMethods)
-            {
-                if (!_rpcMethods.ContainsKey(methodName))
+                var bufsize = 1024;
+                var buf = new byte[bufsize];
+                var n = await _client.ReadAsync(buf, token);
+                if (token.IsCancellationRequested)
                 {
                     return;
                 }
 
-                rpc = _rpcMethods[methodName];
+                OnReceived(buf.Take(n).ToArray());
             }
-
-            rpc.Invoke(args);
         }
 
-        private void AddUser(int id)
+        public void Dispose()
         {
-            _users[id] = new User(id);
-        }
-
-        private void RemoveUser(int id)
-        {
-            _users.Remove(id);
-        }
-
-        private void MigrateHost()
-        {
-            IsHost = true;
-        }
-
-        private void Register(int id)
-        {
-            UserId = id;
+            _cts?.Cancel();
         }
     }
 }
